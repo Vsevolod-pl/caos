@@ -1,0 +1,12 @@
+*.pdf
+*.txt
+*input*
+*output*
+*reference*
+*.out
+*stdout*
+*stderr*
+*alexa*
+*semavina*
+*.swp
+asm_example
