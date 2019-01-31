@@ -14,13 +14,16 @@ print_fib:
         movl    %ecx, %edx
         addl    %eax, %edx
 
+        // Trash to 16-align.
+        subl    $8, %esp
+
         push    %edx
         push    %ecx
         push    %eax
         push    $L1
         call    printf
 
-        add     $16, %esp
+        add     $24, %esp
 
         popl    %ebp
         ret

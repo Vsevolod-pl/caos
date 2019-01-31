@@ -33,7 +33,7 @@ readi32x:
         ret
 
         .text
-_form2: .asciz  "%d"
+_form2: .asciz  "%x"
         .text
         .align  16
     	.global	writei32

@@ -11,47 +11,46 @@ process:
         push    %ebx
         xor     %ebx, %ebx
  
-        sub     $16, %esp
+        subl    $16, %esp
 
-loop:   lea     12(%esp), %eax
+loop:   lea     -8(%ebp), %eax
         push    %eax
-        lea     12(%esp), %eax
+        lea     -12(%ebp), %eax
         push    %eax
-        lea     12(%esp), %eax
+        lea     -16(%ebp), %eax
         push    %eax
-        lea     12(%esp), %eax
+        lea     -20(%ebp), %eax
         push    %eax
         push    $Lscan
+
         call    scanf
-        add     $4, %esp
-        add     $16, %esp
-        jmp     print_debug
-continue:
+        addl    $4, %esp
+        addl    $16, %esp
         cmpl    $4, %eax
         jne     print
 
         /*
-            a1 -> 0(%esp)
-            b1 -> 4(%esp)
-            a2 -> 8(%esp)
-            b2 -> 12(%esp)
+            a1 -> -20(%ebp)
+            b1 -> -16(%ebp)
+            a2 -> -12(%ebp)
+            b2 -> -8(%ebp)
         */
-        movl    8(%esp), %eax
-        cmpl    4(%esp), %eax
+        movl    -12(%ebp), %eax
+        cmpl    -16(%ebp), %eax
         jge     loop
-        movl    0(%esp), %eax
-        cmpl    12(%esp), %eax
+        movl    -20(%ebp), %eax
+        cmpl    -8(%ebp), %eax
         jge     loop
 
 
         // %eax == left, %edx == right
-        movl    0(%esp), %eax
-        cmpl    8(%esp), %eax
-        cmovl   8(%esp), %eax
+        movl    -20(%ebp), %eax
+        cmpl    -12(%ebp), %eax
+        cmovl   -12(%ebp), %eax
 
-        movl    4(%esp), %edx
-        cmpl    12(%esp), %edx
-        cmovg   12(%esp), %edx
+        movl    -16(%ebp), %edx
+        cmpl    -8(%ebp), %edx
+        cmovg   -8(%ebp), %edx
 
         sub     %eax, %edx
         addl    %edx, %ebx
@@ -59,35 +58,16 @@ continue:
         jmp     loop
 
 print:
+        subl    $12, %esp
         push    %ebx
         push    $Lprint
+
         call    printf
-        add     $8, %esp
+        addl    $20, %esp
 epilogue:
-        add     $16, %esp
+        addl    $16, %esp
         pop     %ebx
         mov     %ebp, %esp
         pop     %ebp
         ret
-
-
-print_debug:
-/*
-        call    writei32
-        call    nl
-        movl    0(%esp), %eax
-        call    writei32
-        call    nl
-        movl    4(%esp), %eax
-        call    writei32
-        call    nl
-        movl    8(%esp), %eax
-        call    writei32
-        call    nl
-        movl    12(%esp), %eax
-        call    writei32
-        call    nl
-        call    nl
-*/
-        jmp     continue
 
