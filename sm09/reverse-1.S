@@ -13,20 +13,23 @@ process:
         push    %edi
         push    %esi
         push    %ebx
- 
+
+        subl    $4, %esp
+
 get_num:
-        sub     $4, %esp
-        lea     0(%esp), %eax
+        lea     -16(%ebp), %eax
+
         push    %eax
         push    $Lscan
         call    scanf
         add     $8, %esp
+
         // %edi -- above top local variable
         // %esi -- iterator
-        mov     %esp, %edi
-        mov     %esp, %esi
+        lea     -16(%ebp), %edi
+        lea     -16(%ebp), %esi
         // Subtract 4 * num_items from %esp.
-        mov     0(%esp), %eax
+        mov     -16(%ebp), %eax
         cmpl    $0, %eax
         je      epilogue
         sub     %eax, %esp
@@ -35,36 +38,60 @@ get_num:
         sub     %eax, %esp
         // %ebx -- iterator border
         movl    %esp, %ebx
+        // Push num_items.
+        push    %eax
         andl    $0xFFFFFFF0, %esp
 
 scan_loop:
         lea     -4(%esi), %eax
+
+        // scanf
         subl    $8, %esp
         push    %eax
         push    $Lscan
         call    scanf
         addl    $16, %esp
+        // scanf
+
         subl    $4, %esi
         cmpl    %ebx, %esi
         jg      scan_loop
       
 print_loop:
+
+        // printf %d
         subl    $8, %esp
         push    (%esi)
         push    $Lprint
         call    printf
         addl    $16, %esp
+        // printf %d
+
         addl    $4, %esi
         cmpl    %edi, %esi
         jne     print_loop
 
+        // printf \n
         subl    $12, %esp
         push    $Lnl
         call    printf
         addl    $16, %esp
+        // printf \n
+
+        // Finish 16-align.
+        movl    %ebx, %esp
+        subl    $4, %esp
+        // Pop num_items.
+        pop     %eax
+        // Multiply by 4.
+        addl    %eax, %eax
+        addl    %eax, %eax
+
+        addl    %eax, %esp
+        
 epilogue:
-        mov     %ebp, %esp
-        subl    $8, %esp
+        addl    $4, %esp
+
         pop     %ebx
         pop     %esi
         pop     %edi
