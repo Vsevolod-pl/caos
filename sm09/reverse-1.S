@@ -83,10 +83,10 @@ print_loop:
         subl    $4, %esp
         // Pop num_items.
         pop     %eax
-        // Multiply by 4.
-        addl    %eax, %eax
-        addl    %eax, %eax
 
+        addl    %eax, %esp
+        addl    %eax, %esp
+        addl    %eax, %esp
         addl    %eax, %esp
         
 epilogue:
