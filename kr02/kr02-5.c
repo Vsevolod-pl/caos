@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 
 int MAX_NOT_INF() {
     return 0x10000U - 0x10U - 1U;
@@ -39,11 +40,10 @@ void to_half_float(int value, unsigned short *hf) {
         }
         return;
     }
+    *hf = 0;
     if (value == 0) {
-        *hf = 0;
         return;
     }
-    *hf ^= *hf;
     if (value < 0) {
         value *= -1;
         *hf |= MINUS_OR_MASK;
@@ -57,20 +57,13 @@ void to_half_float(int value, unsigned short *hf) {
     } else {
         mantissa = round_to_place(mantissa, left_1 - MANTISSA_SIZE);
     }
+    if (mantissa == (1 << (MANTISSA_SIZE + 1))) {
+        ++exp;
+        mantissa >>= 1;
+    }
     mantissa ^= NO_MANTISSA_MSB_XOR_MASK;
     *hf |= mantissa;
     *hf |= (exp + BIAS) << MANTISSA_SIZE;
     return;
-}
-
-#include <stdio.h>
-
-int main() {
-    int n;
-    unsigned short result;
-    while (scanf("%d", &n) == 1) {
-        to_half_float(n, &result);
-        printf("%x\n", result);
-    }
 }
 
