@@ -1,4 +1,5 @@
 #include <asm/unistd_32.h>
+
         .text
 int0:   .byte  '0'
 int9:   .byte  '9'
