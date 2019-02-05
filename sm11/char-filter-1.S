@@ -1,8 +1,8 @@
 #include <asm/unistd_32.h>
 
         .text
-int0:   .byte  '0'
-int9:   .byte  '9'
+int0:   .byte   '0'
+int9:   .byte   '9'
 
         .text
         .global _start
@@ -40,5 +40,5 @@ print:  movb    %ecx, (%esp)
 
 end:
         mov     $__NR_exit, %eax
-        mov     $1, %ebx
+        xor     %ebx, %ebx
         int     $0x80
