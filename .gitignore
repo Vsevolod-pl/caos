@@ -11,6 +11,7 @@
 *.swp
 *tester.c
 *main.c
+*main.S
 *hello_world*
 asm_example
 alexelexa/
