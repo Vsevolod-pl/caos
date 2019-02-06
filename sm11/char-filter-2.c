@@ -1,33 +1,47 @@
 #include <asm/unistd_32.h>
 
-enum { BUFFER_SIZE = 1 };
-
 void _start() {
-    char ch;
-    int code;
+    char ch = 0;
+    int code = 0;
     while (42) {
-        asm(
-            "int $0x80"
-            : "=a" (code)
-            : "a" (__NR_read), "b" (0), "c" (&ch), "d" (BUFFER_SIZE)
-
+        asm volatile(
+            "mov %1, %%eax\n"
+            "mov %2, %%ebx\n"
+            "mov %3, %%ecx\n"
+            "movl $0, (%%ecx)\n"
+            "mov %4, %%edx\n"
+            "int $0x80\n"
+            "movl %%eax, %0\n"
+            : "=g" (code)
+            : "g" (__NR_read), "g" (0), "g" (&ch), "g" (1)
+            : "%eax", "%ebx", "%ecx", "%edx", "memory"
         );
-        if (code != BUFFER_SIZE) {
+        if (code == 0) {
             break;
         }
         if ('a' <= ch && ch <= 'z') {
             ch += 'A' - 'a';
         }
-        asm(
+        asm volatile(
+            "mov %1, %%eax\n"
+            "mov %2, %%ebx\n"
+            "mov %3, %%ecx\n"
+            "mov %4, %%edx\n"
+            "int $0x80\n"
+            "mov %%eax, %0\n"
             "int $0x80"
-            : "=a" (code)
-            : "a" (__NR_write), "b" (1), "c" (&ch), "d" (BUFFER_SIZE)
+            : "=g" (code)
+            : "g" (__NR_write), "g" (1), "g" (&ch), "g" (1)
+            : "%eax", "%ebx", "%ecx", "%edx", "memory"
         );
     }
-    asm(
-        "int     $0x80"
+    asm volatile(
+        "mov %0, %%eax\n"
+        "mov %1, %%ebx\n"
+        "int $0x80"
         : 
-        : "a" (__NR_exit), "b" (0)
+        : "g" (__NR_exit), "g" (0)
+        : "%eax", "%memory"
     );
 }
 
