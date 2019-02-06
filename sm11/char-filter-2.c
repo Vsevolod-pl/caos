@@ -1,8 +1,8 @@
 #include <asm/unistd_32.h>
 
 void _start() {
-    char ch = 0;
-    int code = 0;
+    volatile char ch = 0;
+    volatile int code = 0;
     while (42) {
         asm volatile(
             "mov %1, %%eax\n"
@@ -19,7 +19,7 @@ void _start() {
         if (code == 0) {
             break;
         }
-        if ('a' <= ch && ch <= 'z') {
+        if (ch >= 'a' && ch <= 'z') {
             ch += 'A' - 'a';
         }
         asm volatile(
@@ -29,7 +29,6 @@ void _start() {
             "mov %4, %%edx\n"
             "int $0x80\n"
             "mov %%eax, %0\n"
-            "int $0x80"
             : "=g" (code)
             : "g" (__NR_write), "g" (1), "g" (&ch), "g" (1)
             : "%eax", "%ebx", "%ecx", "%edx", "memory"
@@ -37,11 +36,11 @@ void _start() {
     }
     asm volatile(
         "mov %0, %%eax\n"
-        "mov %1, %%ebx\n"
+        "xor %%ebx, %%ebx\n"
         "int $0x80"
         : 
-        : "g" (__NR_exit), "g" (0)
-        : "%eax", "%memory"
+        : "g" (__NR_exit)
+        : "%eax", "%ebx", "%memory"
     );
 }
 
