@@ -1,8 +1,8 @@
 #include <asm/unistd_32.h>
 
 void _start() {
-    volatile char ch = 0;
-    volatile int code = 0;
+    char ch = 0;
+    int code = 0;
     while (42) {
         asm volatile(
             "mov %1, %%eax\n"
