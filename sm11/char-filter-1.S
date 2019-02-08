@@ -1,10 +1,6 @@
 #include <asm/unistd_32.h>
 
         .text
-int0:   .byte   '0'
-int9:   .byte   '9'
-
-        .text
         .global _start
 _start:
         push    %ebp
@@ -24,11 +20,11 @@ loop:   mov     $__NR_read, %eax
         je      end
 
         movb    (%esp), %ecx
-        cmpb    int0, %ecx
+        cmpb    $'0', %ecx
         jl      print
-        cmpb    int9, %ecx
+        cmpb    $'9', %ecx
         jg      print
-        movb    int0, %ecx
+        movb    $'0', %ecx
 
 print:  movb    %ecx, (%esp)
         mov     $__NR_write, %eax
