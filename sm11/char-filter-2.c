@@ -40,7 +40,7 @@ void _start() {
         "int $0x80"
         : 
         : "g" (__NR_exit)
-        : "%eax", "%ebx", "%memory"
+        : "%eax", "%ebx", "memory"
     );
 }
 
