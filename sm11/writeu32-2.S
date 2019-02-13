@@ -27,7 +27,8 @@ zeroize:
         // Get 10^0, 10^1, .., 10^9
 mul10:
         movl    4(%esi), %eax
-        mull    $10
+        movl    $10, %ebx
+        mull    %ebx
         movl    %eax, (%esi)  // 10 * 10^{i - 1}
         subl    $4, %esi
         cmpl    %esi, %edi
@@ -66,8 +67,7 @@ skip_zero_loop:
 // write all digits
 write_digit:
         movl    (%esi), %ecx
-        // !!! HOW TO PUT SMTH ON %EDX? WHAT DO WE NEED TO PUT ON THIS???
-        ...
+        movl    stout, %edx
         call    writechar
         addl    $4, %esi
         cmpl    %esi, %edi
@@ -85,6 +85,7 @@ end:
 // Number is 0. Print it especially like nothing before!
 write_zero:
         movl    $'0', %ecx
-        ...
+        movl    stout, %edx
         call    writechar
-        ret
+        jmp     end
+
