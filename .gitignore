@@ -10,8 +10,6 @@
 *semavina*
 *.swp
 *tester.c
-*main.c
-*main.S
 *hello_world*
 *simpleio_i686.S
 asm_example
