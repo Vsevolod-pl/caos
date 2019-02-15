@@ -4,12 +4,12 @@
 enum { BUFFER_SIZE = 4096 };
 
 void copy_file(int in_fd, int out_fd) {
-    char buf[BUFFER_SIZE];
-    ssize_t num_total_read;
-    while ((num_total_read = read(in_fd, buf, BUFFER_SIZE)) > 0) {
+    unsigned char buf[BUFFER_SIZE];
+    ssize_t num_read;
+    while ((num_read = read(in_fd, buf, BUFFER_SIZE)) > 0) {
         ssize_t num_total_write = 0, num_write;
-        while (num_total_write != num_total_read) {
-            if ((num_write = write(out_fd, buf + num_total_write, num_total_read - num_total_write)) != -1) {
+        while (num_total_write != num_read) {
+            if ((num_write = write(out_fd, buf + num_total_write, num_read - num_total_write)) != -1) {
                 num_total_write += num_write;
             } else {
                 // Stop writing.
