@@ -1,4 +1,8 @@
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 struct FileContent {
     ssize_t size;
@@ -45,7 +49,7 @@ struct FileContent read_file(int fd) {
     char *new_data = realloc(file.data, (current_size + buffer_filled + 1));
     if (new_data) {
         file.data = new_data;
-        memcpy(file.data + buffer_filled, buf, buffer_filled);
+        memcpy(file.data + current_size, buf, buffer_filled);
         current_size += buffer_filled;
         // Do not increment file.size or current_size!!! \0 don't count.
         *(file.data + current_size) = 0;
