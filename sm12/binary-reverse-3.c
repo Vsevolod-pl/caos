@@ -41,6 +41,15 @@ int64_t MIN_INT64() {
     return ~MAX_INT64();
 }
 
+enum { ERROR_MSG_LENGTH = 11 };
+
+int handle_error(ssize_t fd0, ssize_t fd1, const char* errmsg, int errcode) {
+    close(fd0);
+    close(fd1);
+    fprintf(stderr, "%*s", ERROR_MSG_LENGTH, errmsg);
+    return errcode;
+}
+
 int is_sum_int64_overflow(int64_t first, int64_t second) {
     if (first > 0 && second > 0) {
         return first > MAX_INT64() - second;
@@ -49,9 +58,6 @@ int is_sum_int64_overflow(int64_t first, int64_t second) {
     }
     return 0;
 }
-
-// uint64_t get_file_size(int fd) {
-// }
 
 // argv[1] == binary file name
 // argv[2] == int32_t (multiplier)
@@ -64,17 +70,59 @@ int main(int argc, char** argv) {
     if (!is_int32(argv[2], &multiplier)) {
         abort();
     }
-    struct Data left, right;  // No more!
-    int left_fd = open(argv[1], O_RDWR);
-    if (fd == -1) {
-        fprintf(stderr, "Error while opening file the first time");
-        return 2;
+    struct Data left_data, right_data;  // No more!
+    ssize_t left_fd = open(argv[1], O_RDWR);
+    ssize_t right_fd = open(argv[1], O_RDWR);
+    if (left_fd == -1) {
+        return handle_error(left_fd, right_fd, "OPEN  LEFT ", 2);
     }
-    int right_fd = open(argv[1], O_RDWR);
-    if (fd == -1) {
-        fprintf(stderr, "Error while opening file the second time");
-        return 2;
+    if (right_fd == -1) {
+        return handle_error(left_fd, right_fd, "OPEN  RIGHT", 2);
     }
-    fprintf(stderr, "current file pos == %lu\n", lseek(fd, -1, SEEK_END));
+    off_t left_pos = 0, right_pos = lseek(right_fd, 0, SEEK_END);
+    ssize_t err_code;
+    int64_t addend;
+    while (left_pos < right_pos) {
+        // Read left one.
+        err_code = read(left_fd, &buf, sizeof(struct Data));
+        if (err_code != sizeof(struct Data)) {
+            return handle_error(left_fd, right_fd, "READ  LEFT ", 2);
+        }
+        // Move cursor back.
+        left_pos = lseek(left_fd, -sizeof(struct Data), SEEK_CUR);
+        if (left_pos == -1) {
+            return handle_error(left_fd, right_fd, "LSEEK LEFT ", 2);
+        }
+        unmarshall(&left_data, &buf);
+        addend = left_data->x;
+        addend *= multiplier;
+        if (is_sum_int64_overflow(left_data->y, addend)) {
+            return handle_error(left_fd, right_fd, "OVERFLOW L ", 3);
+        }
+        left_data->y += addend;
+
+        // Read the right one.
+        err_code = read(right_fd, &buf, sizeof(struct Data));
+        if (err_code != sizeof(struct Data)) {
+            return handle_error(left_fd, right_fd, "READ  RIGHT", 2);
+        }
+        // Move cursor back.
+        right_pos = lseek(right_fd, -sizeof(struct Data), SEEK_CUR);
+        if (right_pos == -1) {
+            return handle_error(left_fd, right_fd, "LSEEK RIGHT", 2);
+        }
+        unmarhsall(&right_data, &buf);
+        addend = right_data->x;
+        addend *= multiplier;
+        // !!!TODO: Finish it :)
+        // if (is_sum...)
+
+    }
+    if (left_pos == right_pos) {
+        // Odd number of items. Do one change.
+        
+    }
+    // else: entire file is reversed, all items are changed.
+    
 }
 
