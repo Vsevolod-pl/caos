@@ -7,15 +7,47 @@
 
 struct Data
 {
-    int16_t x;
-    int64_t y;
+    int16_t x;  // offset = 0
+    int64_t y;  // offset = 2
 };
 
+void int_to_bytes(unsigned char *out, uint64_t x, int size;) {
+    for (int i = 0; i != size; ++i) {
+        *(out + i) = (unsigned char) x;
+        x >>= NUM_CHAR_BITS;
+    }
+}
+
 void marshall(unsigned char *out, const struct Data *in) {
+    int_to_bytes(out, in->x, INT16_T_SIZE);
+    int_to_bytes(out + INT16_T_SIZE, in->y, INT64_T_SIZE);
+}
+
+enum { INT16_T_SIZE = 2, INT64_T_SIZE = 8 };
+
+enum { NUM_CHAR_BITS = 8 };
+
+uint64_t bytes_to_int64(const unsigned char *in, int size) {
+    uint64_t result = 0;
+    for (int i = 0; i != size; ++i) {
+        result <<= NUM_CHAR_BITS;
+        result |= *(in + size - i);
+    }
+    return result;
+}
+
+uint16_t bytes_to_int16(const unsigned char *in, int size) {
+    uint16_t result = 0;
+    for (int i = 0; i != size; ++i) {
+        result <<= NUM_CHAR_BITS;
+        result |= *(in + size - i);
+    }
+    return result;
 }
 
 void unmarshall(struct Data *out, const unsigned char *in) {
-
+    out->x = bytes_to_int16(in, INT16_T_SIZE);
+    out->y = bytes_to_int64(in + INT16_T_SIZE, INT64_T_SIZE);
 }
 
 int is_int32(char *arg, int32_t *dst) {
@@ -88,11 +120,12 @@ int err_code(
         unsigned char *buf,
         const struct Data *src,
         ) {
-    marshall(&buf, &left_data);
-    err_code = write(left_fd, &buf, sizeof(struct Data));
+    marshall(buf, src);
+    ssize_t err_code = write(dst_fd, buf, sizeof(struct Data));
     if (err_code != sizeof(struct Data)) {
-        return handle_error(left_fd, right_fd, "WRITE LEFT ", 2);
+        return handle_error(src_fd, other_fd, "WRITE ERROR", 2);
     }
+    return 0;
 }
 
 // argv[1] == binary file name
@@ -120,21 +153,17 @@ int main(int argc, char** argv) {
     while (left_pos < right_pos) {
         // Read left one.
         err_code = get_modified_data(left_fd, right_fd, &buf, &left_data, &left_pos, multiplier);
-        if (err_code) {
-            return err_code;
-        }
+        if (err_code) return err_code;
         // Read right one.
         err_code = get_modified_data(right_fd, left_fd, &buf, &right_data, &right_pos, multiplier);
-        if (err_code) {
-            return err_code;
-        }
-
+        if (err_code) return err_code;
+        // Write right one to left.
         err_code = write_data(left_fd, right_fd, &buf, &right_data);
         if (err_code) return err_code;
-
+        // Write left one to right.
         err_code = write_data(right_fd, left_fd, &buf, &left_data);
         if (err_code) return err_code;
-
+        // Get left cursor position.
         left_pos = lseek(left_fd, 0, SEEK_CUR);
         if (left_pos == -1) return handle_error(left_fd, right_fd, "LSEEK LEFT ", 2);
         // Move right cursor back.
@@ -149,9 +178,8 @@ int main(int argc, char** argv) {
         err_code = write_data(left_fd, right_fd, &buf, &left_data);
         if (err_code) return err_code;
     }
+    // else: entire file is reversed, all items are changed.
     close(left_fd);
     close(right_fd);
-    // else: entire file is reversed, all items are changed.
-    
 }
 
