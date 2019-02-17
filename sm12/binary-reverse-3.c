@@ -11,7 +11,10 @@ struct Data
     int64_t y;  // offset = 2
 };
 
-void int_to_bytes(unsigned char *out, uint64_t x, int size;) {
+enum { NUM_CHAR_BITS = 8 };
+enum { INT16_T_SIZE = 2, INT64_T_SIZE = 8 };
+
+void int_to_bytes(unsigned char *out, uint64_t x, int size) {
     for (int i = 0; i != size; ++i) {
         *(out + i) = (unsigned char) x;
         x >>= NUM_CHAR_BITS;
@@ -23,9 +26,6 @@ void marshall(unsigned char *out, const struct Data *in) {
     int_to_bytes(out + INT16_T_SIZE, in->y, INT64_T_SIZE);
 }
 
-enum { INT16_T_SIZE = 2, INT64_T_SIZE = 8 };
-
-enum { NUM_CHAR_BITS = 8 };
 
 uint64_t bytes_to_int64(const unsigned char *in, int size) {
     uint64_t result = 0;
@@ -97,11 +97,11 @@ int get_modified_data(
         unsigned char *buf,
         off_t *cursor_pos,
         int32_t multiplier) {
-    ssize_t err_code = read(src_fd, &buf, sizeof(struct Data));
+    ssize_t err_code = read(src_fd, buf, sizeof(struct Data));
     if (err_code != sizeof(struct Data)) {
         return handle_error(src_fd, other_fd, "READ  ERROR", 2);
     }
-    *cursor_pos = lseek(left_fd, -sizeof(struct Data), SEEK_CUR);
+    *cursor_pos = lseek(src_fd, -sizeof(struct Data), SEEK_CUR);
     if (*cursor_pos == -1) {
         return handle_error(src_fd, other_fd, "LSEEK ERROR", 2);
     }
@@ -115,15 +115,14 @@ int get_modified_data(
     return 0;
 }
 
-int err_code(
+int write_data(
         int dst_fd, int other_fd,
         unsigned char *buf,
-        const struct Data *src,
-        ) {
+        const struct Data *src) {
     marshall(buf, src);
     ssize_t err_code = write(dst_fd, buf, sizeof(struct Data));
     if (err_code != sizeof(struct Data)) {
-        return handle_error(src_fd, other_fd, "WRITE ERROR", 2);
+        return handle_error(dst_fd, other_fd, "WRITE ERROR", 2);
     }
     return 0;
 }
@@ -152,16 +151,16 @@ int main(int argc, char** argv) {
     ssize_t err_code;
     while (left_pos < right_pos) {
         // Read left one.
-        err_code = get_modified_data(left_fd, right_fd, &buf, &left_data, &left_pos, multiplier);
+        err_code = get_modified_data(left_fd, right_fd, &left_data, buf, &left_pos, multiplier);
         if (err_code) return err_code;
         // Read right one.
-        err_code = get_modified_data(right_fd, left_fd, &buf, &right_data, &right_pos, multiplier);
+        err_code = get_modified_data(right_fd, left_fd, &right_data, buf, &right_pos, multiplier);
         if (err_code) return err_code;
         // Write right one to left.
-        err_code = write_data(left_fd, right_fd, &buf, &right_data);
+        err_code = write_data(left_fd, right_fd, buf, &right_data);
         if (err_code) return err_code;
         // Write left one to right.
-        err_code = write_data(right_fd, left_fd, &buf, &left_data);
+        err_code = write_data(right_fd, left_fd, buf, &left_data);
         if (err_code) return err_code;
         // Get left cursor position.
         left_pos = lseek(left_fd, 0, SEEK_CUR);
@@ -172,10 +171,10 @@ int main(int argc, char** argv) {
     }
     if (left_pos == right_pos) {
         // Odd number of items. Do one change.
-        err_code = get_modified_data(left_fd, right_fd, &buf, &left_data, &left_pos, multiplier);
+        err_code = get_modified_data(left_fd, right_fd, &left_data, buf, &left_pos, multiplier);
         if (err_code) return err_code;
 
-        err_code = write_data(left_fd, right_fd, &buf, &left_data);
+        err_code = write_data(left_fd, right_fd, buf, &left_data);
         if (err_code) return err_code;
     }
     // else: entire file is reversed, all items are changed.
