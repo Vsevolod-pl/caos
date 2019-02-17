@@ -59,6 +59,42 @@ int is_sum_int64_overflow(int64_t first, int64_t second) {
     return 0;
 }
 
+int get_modified_data(
+        int src_fd, int other_fd,
+        struct Data *dst,
+        unsigned char *buf,
+        off_t *cursor_pos,
+        int32_t multiplier) {
+    ssize_t err_code = read(src_fd, &buf, sizeof(struct Data));
+    if (err_code != sizeof(struct Data)) {
+        return handle_error(src_fd, other_fd, "READ  ERROR", 2);
+    }
+    *cursor_pos = lseek(left_fd, -sizeof(struct Data), SEEK_CUR);
+    if (*cursor_pos == -1) {
+        return handle_error(src_fd, other_fd, "LSEEK ERROR", 2);
+    }
+    unmarshall(dst, buf);
+    int64_t addend = dst->x;
+    addend *= multiplier;
+    if (is_sum_int64_overflow(dst->y, addend)) {
+        return handle_error(src_fd, other_fd, "OVERFLOW   ", 3);
+    }
+    dst->y += addend;
+    return 0;
+}
+
+int err_code(
+        int dst_fd, int other_fd,
+        unsigned char *buf,
+        const struct Data *src,
+        ) {
+    marshall(&buf, &left_data);
+    err_code = write(left_fd, &buf, sizeof(struct Data));
+    if (err_code != sizeof(struct Data)) {
+        return handle_error(left_fd, right_fd, "WRITE LEFT ", 2);
+    }
+}
+
 // argv[1] == binary file name
 // argv[2] == int32_t (multiplier)
 int main(int argc, char** argv) {
@@ -81,47 +117,40 @@ int main(int argc, char** argv) {
     }
     off_t left_pos = 0, right_pos = lseek(right_fd, 0, SEEK_END);
     ssize_t err_code;
-    int64_t addend;
     while (left_pos < right_pos) {
         // Read left one.
-        err_code = read(left_fd, &buf, sizeof(struct Data));
-        if (err_code != sizeof(struct Data)) {
-            return handle_error(left_fd, right_fd, "READ  LEFT ", 2);
+        err_code = get_modified_data(left_fd, right_fd, &buf, &left_data, &left_pos, multiplier);
+        if (err_code) {
+            return err_code;
         }
-        // Move cursor back.
-        left_pos = lseek(left_fd, -sizeof(struct Data), SEEK_CUR);
-        if (left_pos == -1) {
-            return handle_error(left_fd, right_fd, "LSEEK LEFT ", 2);
+        // Read right one.
+        err_code = get_modified_data(right_fd, left_fd, &buf, &right_data, &right_pos, multiplier);
+        if (err_code) {
+            return err_code;
         }
-        unmarshall(&left_data, &buf);
-        addend = left_data->x;
-        addend *= multiplier;
-        if (is_sum_int64_overflow(left_data->y, addend)) {
-            return handle_error(left_fd, right_fd, "OVERFLOW L ", 3);
-        }
-        left_data->y += addend;
 
-        // Read the right one.
-        err_code = read(right_fd, &buf, sizeof(struct Data));
-        if (err_code != sizeof(struct Data)) {
-            return handle_error(left_fd, right_fd, "READ  RIGHT", 2);
-        }
-        // Move cursor back.
-        right_pos = lseek(right_fd, -sizeof(struct Data), SEEK_CUR);
-        if (right_pos == -1) {
-            return handle_error(left_fd, right_fd, "LSEEK RIGHT", 2);
-        }
-        unmarhsall(&right_data, &buf);
-        addend = right_data->x;
-        addend *= multiplier;
-        // !!!TODO: Finish it :)
-        // if (is_sum...)
+        err_code = write_data(left_fd, right_fd, &buf, &right_data);
+        if (err_code) return err_code;
 
+        err_code = write_data(right_fd, left_fd, &buf, &left_data);
+        if (err_code) return err_code;
+
+        left_pos = lseek(left_fd, 0, SEEK_CUR);
+        if (left_pos == -1) return handle_error(left_fd, right_fd, "LSEEK LEFT ", 2);
+        // Move right cursor back.
+        right_pos = lseek(right_fd, -2 * sizeof(struct Data), SEEK_CUR);
+        if (right_pos == -1) return handle_error(left_fd, right_fd, "LSEEK RIGHT", 2);
     }
     if (left_pos == right_pos) {
         // Odd number of items. Do one change.
-        
+        err_code = get_modified_data(left_fd, right_fd, &buf, &left_data, &left_pos, multiplier);
+        if (err_code) return err_code;
+
+        err_code = write_data(left_fd, right_fd, &buf, &left_data);
+        if (err_code) return err_code;
     }
+    close(left_fd);
+    close(right_fd);
     // else: entire file is reversed, all items are changed.
     
 }
