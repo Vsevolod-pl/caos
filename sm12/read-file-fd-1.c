@@ -6,15 +6,17 @@
 
 enum { BUFFER_SIZE = 4096 };
 
+/*
 struct FileContent
 {
     ssize_t size;
     char *data;
 };
+*/
 
 struct FileContent read_file(int fd) {
     char buf[BUFFER_SIZE];
-    struct FileContent file;
+    struct FileContent file = {};
     ssize_t num_read;
     ssize_t current_size = 0;
     int buffer_filled = 0;
