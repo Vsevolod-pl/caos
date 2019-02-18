@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "file.data == NULL\n");
         fprintf(stderr, "file.size == %zd\n", file.size);
     }
+    free(file.data);
     close(fd);
 }
 
