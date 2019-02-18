@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #pragma pack(push, 1)
@@ -14,11 +15,11 @@ struct Data
 #pragma pack(pop)
 
 void marshall(unsigned char *out, const struct Data *in) {
-    *out = (unsigned char *)in;
+    *((struct Data *)out) = *in;
 }
 
 void unmarshall(struct Data *out, const unsigned char *in) {
-    *out = (struct Data *)in;
+    *out = *(struct Data *)in;
 }
 
 int is_int32(char *arg, int32_t *dst) {
@@ -130,7 +131,7 @@ int main(int argc, char** argv) {
     if (is_file_empty(left_fd)) {
         return handle_error(left_fd, right_fd, "EMPTY FILE ", 0);
     }
-    off_t left_pos = 0, right_pos = lseek(right_fd, 0, SEEK_END);
+    off_t left_pos = 0, right_pos = lseek(right_fd, -sizeof(struct Data), SEEK_END);
     ssize_t err_code;
     while (left_pos < right_pos) {
         // Read left one.
