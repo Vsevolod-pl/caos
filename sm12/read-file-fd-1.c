@@ -6,6 +6,12 @@
 
 enum { BUFFER_SIZE = 4096 };
 
+struct FileContent
+{
+    ssize_t size;
+    char *data;
+};
+
 struct FileContent read_file(int fd) {
     char buf[BUFFER_SIZE];
     struct FileContent file;
@@ -41,7 +47,7 @@ struct FileContent read_file(int fd) {
         return file;
     }
     // Do the flush and add \0
-    char *new_data = realloc(file.data, (current_size + buffer_filled + 1));
+    char *new_data = realloc(file.data, current_size + buffer_filled + 1);
     if (new_data) {
         file.data = new_data;
         memcpy(file.data + current_size, buf, buffer_filled);
