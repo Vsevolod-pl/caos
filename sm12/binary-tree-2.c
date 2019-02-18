@@ -16,13 +16,11 @@ ssize_t traverse(int fd, int id) {
     struct Node buf;
     ssize_t errcode = read(fd, &buf, sizeof(struct Node));
     if (errcode != sizeof(struct Node)) {
-        fprintf(stderr, "Error while reading\n");
         return 1;
     }
     if (buf.right_idx) {
         errcode = traverse(fd, buf.right_idx);
         if (errcode) {
-            fprintf(stderr, "Error is deeper\n");
             return 1;
         }
     }
@@ -30,9 +28,11 @@ ssize_t traverse(int fd, int id) {
     if (buf.left_idx) {
         errcode = traverse(fd, buf.left_idx);
         if (errcode) {
-            fprintf(stderr, "Error is deeper\n");
             return 1;
         }
+    }
+    if (id == 0) {
+        printf("\n");
     }
     return 0;
 }
@@ -46,10 +46,10 @@ int main(int argc, char **argv) {
     int fd = open(argv[1], O_RDONLY);
     if (is_file_empty(fd)) {
         close(fd);
-        return 0;
+        return 1;
     }
     ssize_t errcode = traverse(fd, 0);
     close(fd);
-    return 0;
+    return errcode;
 }
 
