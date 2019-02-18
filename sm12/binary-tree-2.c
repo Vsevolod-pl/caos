@@ -38,7 +38,12 @@ ssize_t traverse(int fd, int id) {
 }
 
 int is_file_empty(int fd) {
-    return lseek(fd, 0, SEEK_END) == 0;
+    off_t pos = lseek(fd, 0, SEEK_END);
+    if (pos == 0) {
+        return 1;
+    }
+    pos = lseek(fd, 0, SEEK_SET);
+    return 0;
 }
 
 // argv[1] == input file
