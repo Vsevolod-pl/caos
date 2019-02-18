@@ -127,6 +127,10 @@ int write_data(
     return 0;
 }
 
+int is_file_empty(int fd) {
+    return lseek(fd, 0, SEEK_END);
+}
+
 // argv[1] == binary file name
 // argv[2] == int32_t (multiplier)
 int main(int argc, char** argv) {
@@ -146,6 +150,9 @@ int main(int argc, char** argv) {
     }
     if (right_fd == -1) {
         return handle_error(left_fd, right_fd, "OPEN  RIGHT", 2);
+    }
+    if (is_file_empty(left_fd)) {
+        return handle_error(left_fd, right_fd, "EMPTY FILE ", 0);
     }
     off_t left_pos = 0, right_pos = lseek(right_fd, 0, SEEK_END);
     ssize_t err_code;
