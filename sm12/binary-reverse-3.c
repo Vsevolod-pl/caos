@@ -128,7 +128,7 @@ int write_data(
 }
 
 int is_file_empty(int fd) {
-    return lseek(fd, 0, SEEK_END);
+    return lseek(fd, 0, SEEK_END) == 0;
 }
 
 // argv[1] == binary file name
