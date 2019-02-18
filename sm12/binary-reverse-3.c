@@ -5,49 +5,20 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#pragma pack(push, 1)
 struct Data
 {
-    int16_t x;  // offset = 0
-    int64_t y;  // offset = 2
+    int16_t x;  // offset = 0/10
+    int64_t y;  // offset = 2/10
 };
-
-enum { NUM_CHAR_BITS = 8 };
-enum { INT16_T_SIZE = 2, INT64_T_SIZE = 8 };
-
-void int_to_bytes(unsigned char *out, uint64_t x, int size) {
-    for (int i = 0; i != size; ++i) {
-        *(out + i) = (unsigned char) x;
-        x >>= NUM_CHAR_BITS;
-    }
-}
+#pragma pack(pop)
 
 void marshall(unsigned char *out, const struct Data *in) {
-    int_to_bytes(out, in->x, INT16_T_SIZE);
-    int_to_bytes(out + INT16_T_SIZE, in->y, INT64_T_SIZE);
-}
-
-
-uint64_t bytes_to_int64(const unsigned char *in, int size) {
-    uint64_t result = 0;
-    for (int i = 0; i != size; ++i) {
-        result <<= NUM_CHAR_BITS;
-        result |= *(in + size - i);
-    }
-    return result;
-}
-
-uint16_t bytes_to_int16(const unsigned char *in, int size) {
-    uint16_t result = 0;
-    for (int i = 0; i != size; ++i) {
-        result <<= NUM_CHAR_BITS;
-        result |= *(in + size - i);
-    }
-    return result;
+    *out = (unsigned char *)in;
 }
 
 void unmarshall(struct Data *out, const unsigned char *in) {
-    out->x = bytes_to_int16(in, INT16_T_SIZE);
-    out->y = bytes_to_int64(in + INT16_T_SIZE, INT64_T_SIZE);
+    *out = (struct Data *)in;
 }
 
 int is_int32(char *arg, int32_t *dst) {
@@ -78,7 +49,7 @@ enum { ERROR_MSG_LENGTH = 11 };
 int handle_error(ssize_t fd0, ssize_t fd1, const char* errmsg, int errcode) {
     close(fd0);
     close(fd1);
-    fprintf(stderr, "%*s", ERROR_MSG_LENGTH, errmsg);
+    fprintf(stderr, "%*s\n", ERROR_MSG_LENGTH, errmsg);
     return errcode;
 }
 
@@ -128,7 +99,12 @@ int write_data(
 }
 
 int is_file_empty(int fd) {
-    return lseek(fd, 0, SEEK_END) == 0;
+    off_t pos = lseek(fd, 0, SEEK_END);
+    if (pos == 0) {
+        return 1;
+    }
+    pos = lseek(fd, 0, SEEK_SET);
+    return 0;
 }
 
 // argv[1] == binary file name
@@ -187,5 +163,6 @@ int main(int argc, char** argv) {
     // else: entire file is reversed, all items are changed.
     close(left_fd);
     close(right_fd);
+    return 0;
 }
 
