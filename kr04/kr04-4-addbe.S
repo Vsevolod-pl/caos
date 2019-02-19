@@ -10,6 +10,11 @@ addbe:
         push    %ebx
         push    %esi
         push    %edi
+
+        // Check with it!!!
+        // movl 0xABCDEF12, %eax
+        // movl 0xBCDEF123, %ecx
+        // movl 0xCDEF1234, %edx
     
         // %ebx == i
         // %esi == carry
