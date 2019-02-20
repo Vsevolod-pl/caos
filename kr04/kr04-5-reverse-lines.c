@@ -58,7 +58,7 @@ void *my_brk(void *newbrk) {
     return result;
 }
 
-enum { BUF_SIZE = 4096 };
+enum { BUF_SIZE = 524288 };
 
 int read_data(int in_fd, unsigned char **pdata) {
     unsigned char *data = (unsigned char *)my_brk(NULL);
@@ -71,11 +71,16 @@ int read_data(int in_fd, unsigned char **pdata) {
         current_size += BUF_SIZE;
         num_read = my_read(in_fd, data + current_size - BUF_SIZE, BUF_SIZE);
         if (num_read > 0) {
-            current_size += num_read - BUF_SIZE;
-            new_data = (unsigned char *)my_brk(data + current_size);
+            if (num_read < BUF_SIZE) {
+                current_size += num_read - BUF_SIZE;
+                new_data = (unsigned char *)my_brk(data + current_size);
+            }
         } else {
             if (num_read == 0) {
                 current_size -= BUF_SIZE;
+                if (current_size == 0) {
+                    break;
+                }
                 if (*(data + current_size - 1) != '\n') {
                     new_data = (unsigned char *)my_brk(data + current_size + 1);
                     *(data + current_size) = '\n';
@@ -99,10 +104,18 @@ struct Data {
 
 void write_reversed_data(int out_fd, struct Data *data) {
     int last_nl = data->size - 1;
-    for (int i = data->size - 1; i > 0; --i) {
-        if (data->data[i - 1] == '\n') {
-            my_write(out_fd, data->data + i, last_nl - i + 1);
-            last_nl = i - 1;
+    for (int i = data->size - 2; i >= 0; --i) {
+        if (data->data[i] == '\n') {
+            if (data->data[i + 1] != '\n') {
+                my_write(out_fd, data->data + i + 1, last_nl - i);
+                last_nl = i;
+            }
+        } else {
+            // data->data[i] != '\n'
+            if (data->data[i + 1] == '\n' && last_nl != i + 1) {
+                my_write(out_fd, data->data + i + 2, last_nl - i - 1);
+                last_nl = i + 1;
+            }
         }
     }
     my_write(out_fd, data->data, last_nl + 1);
