@@ -102,23 +102,49 @@ struct Data {
     int size;
 };
 
+unsigned char buf[BUF_SIZE];
+
+struct Data buffer = {
+    buf, 0
+};
+
+void flush_buf(int out_fd) {
+    my_write(out_fd, buffer.data, buffer.size);
+    buffer.size = 0;
+}
+
+void buf_write(int out_fd, const unsigned char *data, int size) {
+    if (size >= BUF_SIZE) {
+        my_write(out_fd, data, size);
+        return;
+    }
+    if (buffer.size + size > BUF_SIZE) {
+        flush_buf(out_fd);
+    }
+    for (int i = 0; i != size; ++i) {
+        buffer.data[buffer.size + i] = *(data + i);
+    }
+    buffer.size += size;
+}
+
 void write_reversed_data(int out_fd, struct Data *data) {
     int last_nl = data->size - 1;
     for (int i = data->size - 2; i >= 0; --i) {
         if (data->data[i] == '\n') {
             if (data->data[i + 1] != '\n') {
-                my_write(out_fd, data->data + i + 1, last_nl - i);
+                buf_write(out_fd, data->data + i + 1, last_nl - i);
                 last_nl = i;
             }
         } else {
             // data->data[i] != '\n'
             if (data->data[i + 1] == '\n' && last_nl != i + 1) {
-                my_write(out_fd, data->data + i + 2, last_nl - i - 1);
+                buf_write(out_fd, data->data + i + 2, last_nl - i - 1);
                 last_nl = i + 1;
             }
         }
     }
-    my_write(out_fd, data->data, last_nl + 1);
+    buf_write(out_fd, data->data, last_nl + 1);
+    flush_buf(out_fd);
 }
 
 void _start() {
