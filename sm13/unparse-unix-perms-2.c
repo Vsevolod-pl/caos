@@ -3,12 +3,8 @@
 
 enum { NUM_FLAGS = 9 };
 
-enum {
-    SUID_POS = 11, SGID_POS = 10, STICKY_POS = 9,
-    UR_POS = 8, UW_POS = 7, UX_POS = 6,
-    GR_POS = 5, GW_POS = 4, GX_POS = 3,
-    OR_POS = 2, OW_POS = 1, OX_POS = 0,
-};
+enum { SUID_POS = 11, SGID_POS = 10, STICKY_POS = 9, UR_POS = 8, UW_POS = 7, UX_POS = 6 };
+enum { GR_POS = 5, GW_POS = 4, GX_POS = 3, OR_POS = 2, OW_POS = 1, OX_POS = 0 };
 
 const char FLAGS[3] = "rwx";
 
