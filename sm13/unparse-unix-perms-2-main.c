@@ -7,7 +7,10 @@ int main() {
     int buf_size, mode;
     while (scanf("%d%o", &buf_size, &mode) == 2) {
         printf("%s\n", perms_to_str(buf, buf_size, mode));
-        printf("%s\n", buf);
+        for (size_t i = 0; i != BUF_SIZE; ++i) {
+            printf("%c", buf[i]);
+        }
+        printf("\n");
     }
     return 0;
 }
