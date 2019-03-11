@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
             }
         }
     }
+    closedir(dir);
     printf("%llu\n", total_size);
     return 0;
 }
