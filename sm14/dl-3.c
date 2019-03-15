@@ -5,13 +5,20 @@
 
 enum { MAX_ARGS_SIZE = 64 };
 
-struct Data{
+struct Data
+{
     uint32_t data[MAX_ARGS_SIZE / sizeof(uint32_t)];
 };
 
-union Double{
+union Double
+{
     double d;
     uint32_t i[2];
+    struct
+    {
+        unsigned high : 32;
+        unsigned low : 32;
+    };
 };
 
 enum { SHIFT = 4 };
@@ -80,49 +87,22 @@ void *handle(
         // %ecx == p_args.data
         uint32_t result;
         asm volatile(
-            "push %%ebp\n"
-            "mov %%esp, %%ebp\n"
-            "andl $0xFFFFFFF0, %%esp\n"
             "movl %2, %%ecx\n"
-            "addl $64, %%ecx\n"
-            "movl $64, %%ebx\n"
+            "movl $16, %%ebx\n"
+            "subl $64, %%esp\n"
             "loop1:\n"
-            "subl $4, %%ebx\n"
-            "subl $4, %%ecx\n"
-            "movl (%%ecx), %%eax\n"
-            "push %%eax\n"
-            "cmpl $0, %%ebx\n"
+            "subl $1, %%ebx\n"
+            "movl (%%ecx, %%ebx, 4), %%eax\n"
+            "movl %%eax, (%%esp, %%ebx, 4)\n"
+            "test %%ebx, %%ebx\n"
             "jne loop1\n"
             "call *%1\n"
-            "mov %%eax, %0\n"
-            "mov %%ebp, %%esp\n"
-            "pop %%ebp\n"
+            "movl %%eax, %0\n"
+            "addl $64, %%esp\n"
             : "=g" (result)
             : "g"(handler), "g"(p_args.data)
-            : "%eax", "%ebx", "%ecx", "%edx",
-              "%ebp", "%esp", "%esi", "%edi",
-              "memory"
+            : "%eax", "%ebx", "%ecx", "%edx", "memory"
         );
-        /*
-         *
-
-            "push %%eax\n"
-            "push %%ebx\n"
-            "push %%ecx\n"
-            "push %%edx\n"
-            "movl $4, %%eax\n"
-            "movl $2, %%ebx\n"
-            "movl %3, %%ecx\n"
-            "movl $1, %%edx\n"
-            "int $0x80\n"
-            "pop %%edx\n"
-            "pop %%ecx\n"
-            "pop %%ebx\n"
-            "pop %%eax\n"
-
-
-
-         */
         if (return_type == 'i' || return_type == 's') {
             *((uint32_t *)p_result) = result;
         }
@@ -130,35 +110,29 @@ void *handle(
         // %ebx == counter 64->0
         // %ecx == p_args.data
         union Double result;
+        result.d = 0;
         asm volatile(
-            "push %%ebp\n"
-            "mov %%esp, %%ebp\n"
-            "andl $-16, %%esp\n"
-            "movl %2, %%ecx\n"
-            "addl $64, %%ecx\n"
-            "movl $64, %%ebx\n"
+            "movl %3, %%ecx\n"
+            "movl $16, %%ebx\n"
+            "subl $64, %%esp\n"
             "loop2:\n"
-            "subl $4, %%ebx\n"
-            "subl $4, %%ecx\n"
-            "movl (%%ecx), %%eax\n"
-            "push %%eax\n"
+            "subl $1, %%ebx\n"
+            "movl (%%ecx, %%ebx, 4), %%eax\n"
+            "movl %%eax, (%%esp, %%ebx, 4)\n"
             "test %%ebx, %%ebx\n"
             "jne loop2\n"
-            "call *%1\n"
+            "call *%2\n"
             "subl $8, %%esp\n"
-            "fstp (%%esp)\n"
+            "fstpl (%%esp)\n"
             "pop %%eax\n"
-            "mov %%eax, %0\n"
+            "movl %%eax, %0\n"
             "pop %%eax\n"
-            "mov %%eax, %1\n"
+            "movl %%eax, %1\n"
+
             "addl $64, %%esp\n"
-            "mov %%ebp, %%esp\n"
-            "pop %%ebp\n"
-            : "=g" (result.i[0]), "=g"(result.i[1])
+            : "=g" (result.high), "=g"(result.low)
             : "g"(handler), "g"(p_args.data)
-            : "%eax", "%ebx", "%ecx", "%edx",
-              "%ebp", "%esp", "%esi", "%edi",
-              "memory"
+            : "%eax", "%ebx", "%ecx", "%edx", "memory"
         );
         *((double *)p_result) = result.d;
     }
@@ -199,6 +173,7 @@ int main(int argc, char **argv) {
         printf("%d\n", *(int *)result);
     } else if (return_type == 's') {
         printf("%s\n", *(char **)result);
+    } else {
     }
     dlclose(lib_handle);
     free(result);
