@@ -61,82 +61,28 @@ int parse_args(
     return 0;
 }
 
-void *handle(
+typedef double (*d_function_)(struct Data);
+typedef char * (*s_function_)(struct Data);
+typedef int (*i_function_)(struct Data);
+typedef void (*v_function_)(struct Data);
+
+void handle(
         void *handler,
         struct Data p_args,
         char return_type) {
-    size_t result_size;
     if (return_type == 'd') {
-        result_size = sizeof(double);
+        d_function_ f = (d_function_)handler;
+        printf("%.10g\n", f(p_args));
     } else if (return_type == 'i') {
-        result_size = sizeof(int);
+        i_function_ f = (i_function_)handler;
+        printf("%d\n", f(p_args));
+    } else if (return_type == 's') {
+        s_function_ f = (s_function_)handler;
+        printf("%s\n", f(p_args));
     } else {
-        // return_type == 's'
-        result_size = sizeof(char *);
+        v_function_ f = (v_function_)handler;
+        f(p_args);
     }
-    void *p_result = malloc(result_size);
-    if (!p_result) {
-        return NULL;
-    }
-    // double : result at %st(0)
-    // int : result at %eax
-    // char * : result at %eax
-    // void : do nothing
-    if (return_type == 'i' || return_type == 's' || return_type == 'v') {
-        // %ebx == counter 64->0
-        // %ecx == p_args.data
-        uint32_t result;
-        asm volatile(
-            "movl %2, %%ecx\n"
-            "movl $16, %%ebx\n"
-            "subl $64, %%esp\n"
-            "loop1:\n"
-            "subl $1, %%ebx\n"
-            "movl (%%ecx, %%ebx, 4), %%eax\n"
-            "movl %%eax, (%%esp, %%ebx, 4)\n"
-            "test %%ebx, %%ebx\n"
-            "jne loop1\n"
-            "call *%1\n"
-            "movl %%eax, %0\n"
-            "addl $64, %%esp\n"
-            : "=g" (result)
-            : "g"(handler), "g"(p_args.data)
-            : "%eax", "%ebx", "%ecx", "%edx", "memory"
-        );
-        if (return_type == 'i' || return_type == 's') {
-            *((uint32_t *)p_result) = result;
-        }
-    } else {
-        // %ebx == counter 64->0
-        // %ecx == p_args.data
-        union Double result;
-        result.d = 0;
-        asm volatile(
-            "movl %3, %%ecx\n"
-            "movl $16, %%ebx\n"
-            "subl $64, %%esp\n"
-            "loop2:\n"
-            "subl $1, %%ebx\n"
-            "movl (%%ecx, %%ebx, 4), %%eax\n"
-            "movl %%eax, (%%esp, %%ebx, 4)\n"
-            "test %%ebx, %%ebx\n"
-            "jne loop2\n"
-            "call *%2\n"
-            "subl $8, %%esp\n"
-            "fstpl (%%esp)\n"
-            "pop %%eax\n"
-            "movl %%eax, %0\n"
-            "pop %%eax\n"
-            "movl %%eax, %1\n"
-
-            "addl $64, %%esp\n"
-            : "=g" (result.high), "=g"(result.low)
-            : "g"(handler), "g"(p_args.data)
-            : "%eax", "%ebx", "%ecx", "%edx", "memory"
-        );
-        *((double *)p_result) = result.d;
-    }
-    return p_result;
 }
 
 int main(int argc, char **argv) {
@@ -166,17 +112,8 @@ int main(int argc, char **argv) {
         dlclose(lib_handle);
         return 0;
     }
-    void *result = handle(handler, p_args, return_type);
-    if (return_type == 'd') {
-        printf("%.10g\n", *(double *)result);
-    } else if (return_type == 'i') {
-        printf("%d\n", *(int *)result);
-    } else if (return_type == 's') {
-        printf("%s\n", *(char **)result);
-    } else {
-    }
+    handle(handler, p_args, return_type);
     dlclose(lib_handle);
-    free(result);
     return 0;
 }
 
