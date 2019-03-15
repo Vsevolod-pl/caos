@@ -76,7 +76,10 @@ void get_full_path(
     strcpy(dst + dir_path_length + 1, dir_name);
 }
 
-void traverse(const char *dir_path, size_t dir_path_length, const char *dir_name) {
+void traverse(
+        DIR *dir,
+        const char *dir_path, size_t dir_path_length,
+        const char *dir_name) {
     char full_path[PATH_MAX];
     get_full_path(
             full_path,
@@ -84,7 +87,6 @@ void traverse(const char *dir_path, size_t dir_path_length, const char *dir_name
             dir_name);
     size_t full_path_length = strlen(full_path);
     DirList subdirs;
-    DIR *dir = opendir(full_path);
     ls(dir, &subdirs);
     closedir(dir);
 
@@ -104,9 +106,8 @@ void traverse(const char *dir_path, size_t dir_path_length, const char *dir_name
                 );
         DIR *dir = opendir(full_subdir_path);
         if (dir) {
-            closedir(dir);
             printf("cd %s\n", subdirs.p_dirs[i]);
-            traverse(full_path, full_path_length, subdirs.p_dirs[i]);
+            traverse(dir, full_path, full_path_length, subdirs.p_dirs[i]);
             printf("cd ..\n");
         }
     }
@@ -120,9 +121,8 @@ int main(int argc, char **argv) {
     }
     DIR *dir = opendir(argv[1]);
     if (dir) {
-        closedir(dir);
         char empty_dir_name[1] = "\0";
-        traverse(argv[1], strlen(argv[1]), empty_dir_name);
+        traverse(dir, argv[1], strlen(argv[1]), empty_dir_name);
     }
     return 0;
 }
