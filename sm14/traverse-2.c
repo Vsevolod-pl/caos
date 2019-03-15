@@ -1,107 +1,116 @@
 #include <dirent.h>
-#include <memory.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
-#include <sys/stat.h>
+#include <string.h>
 
-int strcasecmp_cmp(const void *lhs, const void *rhs) {
-    return strcasecmp((const char *)lhs, (const char *)rhs);
-}
+typedef struct DirList
+{
+    char **p_dirs;
+    size_t n_dirs;
+    size_t capacity;
+} DirList;
 
-size_t get_data(DIR *dir, char **array, const char *parent_dir) {
-    *array = NULL;
-    size_t size = 0, capacity = 0;
-    struct dirent *entry;
-    char *pathname = malloc(PATH_MAX);
-    if (!pathname) {
-        free(array);
-        array = NULL;
-        return 0;
-    }
-    while ((entry = readdir(dir)) != NULL) {
-        snprintf(pathname, PATH_MAX, "%s/%s", parent_dir, entry->d_name);
-        struct stat stat_buf;
-        if (stat(pathname, &stat_buf) < 0) {
-            continue;
-        }
-        if (!S_ISDIR(stat_buf.st_mode)) {
-            continue;
-        }
-        if (strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0) {
-            continue;
-        }
-
-        if (size == capacity) {
-            if (capacity == 0) {
-                capacity = 1;
-            }
-            if (size == capacity) {
-                capacity *= 2;
-            }
-            char *new_array = realloc(*array, capacity * PATH_MAX);
-            if (!new_array) {
-                free(*array);
-                free(pathname);
-                return 0;
-            }
-            *array = new_array;
-        }
-        memcpy(*array + size * PATH_MAX, entry->d_name, PATH_MAX);
-        ++size;
-    }
-    free(pathname);
-    return size;
-}
-
-void traverse(DIR *dir, const char *parent_dir, const char *current_dir) {
-    if (current_dir) {
-        printf("cd %s\n", current_dir);
-    }
-    char *new_parent_dir = malloc(PATH_MAX);
-    if (!new_parent_dir) {
+void free_dir_list(DirList *dir_list) {
+    if (!dir_list->n_dirs) {
         return;
     }
-    if (current_dir) {
-        snprintf(new_parent_dir, PATH_MAX, "%s/%s", parent_dir, current_dir);
-    } else {
-        snprintf(new_parent_dir, PATH_MAX, "%s", parent_dir);
+    for (size_t i = 0; i != dir_list->n_dirs; ++i) {
+        free(dir_list->p_dirs[i]);
     }
-    char *subdirs;
-    size_t num_subdirs = get_data(dir, &subdirs, new_parent_dir);
-    if (num_subdirs > 1) {
-        qsort((void *)subdirs, num_subdirs, PATH_MAX, strcasecmp_cmp);
-    }
-    for (size_t i = 0; i != num_subdirs; ++i) {
-    }
-    for (size_t i = 0; i != num_subdirs; ++i) {
-        char *new_parent_dir = malloc(PATH_MAX);
-        if (!new_parent_dir) {
-            free(subdirs);
+    free(dir_list->p_dirs);
+    dir_list->p_dirs = NULL;
+    dir_list->n_dirs = 0;
+    dir_list->capacity = 0;
+}
+
+void ls(DIR *dir, DirList *dir_list) {
+    struct dirent *entry;
+    while ((entry = readdir(dir))) {
+        if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
+            continue;
+        }
+        if (entry->d_type != DT_DIR) {
+            // Not a directory.
+            continue;
+        }
+        size_t dir_size = strlen(entry->d_name) + 1;
+        if (dir_size > PATH_MAX) {
+            continue;
+        }
+        if (dir_list->n_dirs == dir_list->capacity) {
+            if (dir_list->capacity) {
+                dir_list->capacity *= 2;
+            } else {
+                dir_list->capacity = 1;
+            }
+            char **new_p_dirs = realloc(dir_list->p_dirs, dir_list->capacity * sizeof(char *));
+            if (!new_p_dirs) {
+                free_dir_list(dir_list);
+                return;
+            }
+            dir_list->p_dirs = new_p_dirs;
+        }
+        dir_list->p_dirs[dir_list->n_dirs] = malloc(dir_size);
+        if (!dir_list->p_dirs[dir_list->n_dirs]) {
+            free_dir_list(dir_list);
             return;
         }
-        if (current_dir) {
-            snprintf(new_parent_dir, PATH_MAX, "%s/%s", parent_dir, current_dir);
-        } else {
-            snprintf(new_parent_dir, PATH_MAX, "%s", parent_dir);
-        }
-        char *pathname = malloc(PATH_MAX);
-        if (!pathname) {
-            free(subdirs);
-            return;
-        }
-        snprintf(pathname, PATH_MAX, "%s/%s", new_parent_dir, subdirs + i * PATH_MAX);
-        DIR *subdir = opendir(pathname);
-        if (subdir) {
-            traverse(subdir, new_parent_dir, subdirs + i * PATH_MAX);
-            closedir(subdir);
-        }
-        free(pathname);
+        memcpy(dir_list->p_dirs[dir_list->n_dirs], entry->d_name, dir_size);
+        ++dir_list->n_dirs;
     }
-    free(subdirs);
-    if (current_dir) {
-        printf("cd ..\n");
+}
+
+int strcasecmp_(const void *lhs, const void *rhs) {
+    char **lhs_ = (char **)lhs;
+    char **rhs_ = (char **)rhs;
+    return strcasecmp(*lhs_, *rhs_);
+}
+
+void get_full_path(
+        char *dst,
+        const char *dir_path, size_t dir_path_length,
+        const char *dir_name) {
+    strcpy(dst, dir_path);
+    dst[dir_path_length] = '/';
+    strcpy(dst + dir_path_length + 1, dir_name);
+}
+
+void traverse(const char *dir_path, size_t dir_path_length, const char *dir_name) {
+    char full_path[PATH_MAX];
+    get_full_path(
+            full_path,
+            dir_path, dir_path_length,
+            dir_name);
+    size_t full_path_length = strlen(full_path);
+    DirList subdirs;
+    DIR *dir = opendir(full_path);
+    ls(dir, &subdirs);
+    closedir(dir);
+
+    if (subdirs.n_dirs > 1) {
+        qsort(subdirs.p_dirs, subdirs.n_dirs, sizeof(char *), strcasecmp_);
     }
+
+    for (size_t i = 0; i != subdirs.n_dirs; ++i) {
+        if (full_path_length + strlen(subdirs.p_dirs[i]) > PATH_MAX - 1) {
+            continue;
+        }
+        char full_subdir_path[PATH_MAX];
+        get_full_path(
+                full_subdir_path,
+                full_path, full_path_length,
+                subdirs.p_dirs[i]
+                );
+        DIR *dir = opendir(full_subdir_path);
+        if (dir) {
+            closedir(dir);
+            printf("cd %s\n", subdirs.p_dirs[i]);
+            traverse(full_path, full_path_length, subdirs.p_dirs[i]);
+            printf("cd ..\n");
+        }
+    }
+    free_dir_list(&subdirs);
 }
 
 int main(int argc, char **argv) {
@@ -111,8 +120,9 @@ int main(int argc, char **argv) {
     }
     DIR *dir = opendir(argv[1]);
     if (dir) {
-        traverse(dir, argv[1], NULL);
         closedir(dir);
+        char empty_dir_name[1] = "\0";
+        traverse(argv[1], strlen(argv[1]), empty_dir_name);
     }
     return 0;
 }
