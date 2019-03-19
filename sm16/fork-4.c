@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -7,17 +6,11 @@
 enum { INPUT_SIZE = 8, NUM_SONS = 3 };
 
 int32_t read_number() {
-    char buf[INPUT_SIZE + 1];
-    buf[INPUT_SIZE] = '\0';
+    char buf[INPUT_SIZE];
     if (read(0, &buf, INPUT_SIZE) != INPUT_SIZE) {
         exit(1);
     }
-    char *eptr = NULL;
-    errno = 0;
-    int64_t value = strtol(buf, &eptr, 10);
-    if (!*buf || *eptr || errno) {
-        exit(1);
-    }
+    int64_t value = strtol(buf, NULL, 10);
     if (value == (int32_t)value) {
         return value;
     }
@@ -32,7 +25,7 @@ int main() {
         }
         if (!pid) {
             int32_t item = read_number();
-            printf("%d\n", item * item);
+            printf("%d %d\n", i + 1, item * item);
             return 0;
         }
     }
