@@ -4,21 +4,38 @@ countrec:
         push    %ebp
         mov     %esp, %ebp
         push    %esi
-        push    %edi
         push    %ebx
 
-        movl    8(%ebp), %esi
         // %esi == *cntx
-        movl    8(%esi), %edi
-        // %edi == *out
+        movl    8(%ebp), %esi
+        // eax = addr
+        movl    0(%esi), %eax
+        // ecx = size
+        movl    4(%esi), %ecx
+        // ecx = addr + size
+        addl    %eax, %ecx
+        // %esi == *out
+        movl    8(%esi), %esi
 
-        call    0(%esi)
+        // counter -- ebx
+        xorl    %ebx, %ebx
+loop:
+        cmpl    4(%ebp), %eax
+        jg      dont
+        cmpl    4(%ebp), %ecx
+        jle     dont
+        addl    $1, %ebx
+dont:   movl    (%ebp), %ebp
+        test    %ebp, %ebp
+        jne     loop
 
-        // Write to *out
-        movl    %ebx, (%edi)
+end:
+        // Write result to *out
+        movl    %ebx, (%esi)
 
         pop     %ebx
-        pop     %edi
         pop     %esi
         mov     %ebp, %esp
+        pop     %ebp
         ret
+
