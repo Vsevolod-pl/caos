@@ -35,7 +35,6 @@ end:
 
         pop     %ebx
         pop     %esi
-        mov     %ebp, %esp
         pop     %ebp
         ret
 
